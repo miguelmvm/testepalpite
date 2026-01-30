@@ -5,7 +5,6 @@ import {
   Line,
   XAxis,
   YAxis,
-  Tooltip,
   Legend,
   CartesianGrid,
 } from "recharts";
@@ -27,149 +26,252 @@ interface RankingEvolutionChartProps {
   data?: Array<Record<string, string | number>>;
 }
 
-// Paleta de cores vibrantes e distintas
-const COLOR_PALETTE = [
-  "#10B981", // Verde Neon
-  "#3B82F6", // Azul
-  "#F59E0B", // Laranja
-  "#EC4899", // Rosa
-  "#8B5CF6", // Roxo
-  "#06B6D4", // Cyan
-  "#EF4444", // Vermelho
-  "#14B8A6", // Teal
-  "#D97706", // Âmbar
-  "#7C3AED", // Violeta
+// OBJETIVO 2: Paleta de cores pastel/suave - visual limpo e tranquilo
+const DISTINCT_COLORS = [
+  '#FFB347', '#A0E7E5', '#B39CD0', '#F49AC2', '#CB99C9',
+  '#C23B22', '#FDFD96', '#836953', '#779ECB', '#FF6961',
+  '#B19CD9', '#FFD1DC', '#AEC6CF', '#F4C2C2', '#CFCFC4',
+  '#B38B6D'
 ];
 
-// Mapeamento de cores por usuário (consistente)
+// Mapeamento de cores por usuário (consistente) - usa paleta distinta
 const getColorForUser = (userName: string, allUsers: string[], userColorsMap?: Record<string, string>): string => {
   // Se temos mapa de cores real, usar
   if (userColorsMap && userColorsMap[userName]) {
     return userColorsMap[userName];
   }
-  // Fallback: usar índice no array
+  // Fallback: usar índice no array com DISTINCT_COLORS
   const index = allUsers.indexOf(userName);
-  return index >= 0 ? COLOR_PALETTE[index % COLOR_PALETTE.length] : "#6B7280";
+  return index >= 0 ? DISTINCT_COLORS[index % DISTINCT_COLORS.length] : "#6B7280";
 };
 
-// Neon Ring Dot - Anel elegante para cada rodada
-const RingDot = (props: any) => {
-  const { cx, cy, fill, stroke } = props;
-  if (!cx || !cy) return null;
-  
-  const color = stroke || fill;
-  
-  return (
-    <circle 
-      cx={cx} 
-      cy={cy} 
-      r={4} 
-      fill="#0f172a"
-      stroke={color}
-      strokeWidth={2}
-      opacity={0.9}
-    />
-  );
+// Helper para extrair iniciais do nome (ex: "Miguel Mota" -> "MM")
+const getInitials = (name: string): string => {
+  return name
+    .split(' ')
+    .map(part => part[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
 };
 
-// Halo Effect para activeDot (apenas no hover)
-const HaloDot = (props: any) => {
-  const { cx, cy, fill, stroke } = props;
+// OBJETIVO 1: Componente CustomChartDot - Avatar "Liquid Glass Pastel" com Badge de Posição
+const CustomChartDot = (props: any) => {
+  const { cx, cy, fill, stroke, payload, dataKey, users, focusedUser } = props;
   if (!cx || !cy) return null;
+
+  const color = stroke || fill || '#888888';
+  const userName = dataKey;
+  const initials = getInitials(userName);
+  const position = payload?.[dataKey]; // Extrai a posição do payload (valor do Y)
   
-  const color = stroke || fill;
-  
+  // Calcular opacidade baseada no foco
+  const isFocused = focusedUser === null || focusedUser === userName;
+  const dotOpacity = focusedUser === null ? 1 : (isFocused ? 1 : 0.15);
+
+  // Converter hex para rgb para aplicar transparência
+  const hexToRgb = (hex: string): string => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '255, 255, 255';
+  };
+
+  const rgbColor = hexToRgb(color);
+
   return (
-    <g filter="url(#glow)">
-      {/* Halo externo grande - transparente */}
-      <circle 
-        cx={cx} 
-        cy={cy} 
-        r={14} 
+    <g opacity={dotOpacity} style={{ transition: 'opacity 0.3s ease' }}>
+      {/* Círculo com efeito "Liquid Glass" - vidro fosco colorido */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={18}
+        fill={`rgba(${rgbColor}, 0.35)`}
+        style={{
+          backdropFilter: 'blur(8px)',
+          filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.15)) drop-shadow(inset 0 1px 0 rgba(255, 255, 255, 0.1))'
+        }}
+      />
+      {/* Borda sutil e elegante */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={18}
         fill="none"
-        stroke={color}
-        strokeWidth={2}
+        stroke="rgba(255, 255, 255, 0.25)"
+        strokeWidth={1.5}
+      />
+      {/* Realce interno para efeito vidro */}
+      <circle
+        cx={cx}
+        cy={cy - 6}
+        r={5}
+        fill="rgba(255, 255, 255, 0.15)"
         opacity={0.6}
       />
-      {/* Halo médio */}
-      <circle 
-        cx={cx} 
-        cy={cy} 
-        r={10} 
-        fill="none"
-        stroke={color}
-        strokeWidth={2.5}
-        opacity={0.8}
-      />
-      {/* Centro brilhante */}
-      <circle 
-        cx={cx} 
-        cy={cy} 
-        r={5} 
-        fill={color}
-        opacity={0.9}
-      />
+      {/* Número da posição - topo da esfera, bem pequeno */}
+      {position && (
+        <text
+          x={cx}
+          y={cy - 8}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="white"
+          fontSize="8"
+          fontWeight="900"
+          fontFamily="system-ui, -apple-system, sans-serif"
+          opacity="0.85"
+          style={{ textShadow: '0 0.5px 1px rgba(0, 0, 0, 0.3)' }}
+        >
+          {position}
+        </text>
+      )}
+      
+      {/* Inicial do usuário - centro da esfera */}
+      <text
+        x={cx}
+        y={cy + 1}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill="white"
+        fontSize="13"
+        fontWeight="bold"
+        fontFamily="system-ui, -apple-system, sans-serif"
+        style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)' }}
+      >
+        {initials}
+      </text>
     </g>
   );
 };
 
-// Custom Tooltip com glassmorphism minimalista
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="rounded-lg border border-white/5 bg-slate-950/90 p-3 shadow-2xl backdrop-blur-xl">
-        <p className="mb-2 font-semibold text-white text-xs tracking-widest uppercase opacity-70">{label}</p>
-        <div className="space-y-1.5">
-          {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center gap-2">
-              <div
-                className="h-2 w-2 rounded-full"
-                style={{ 
-                  backgroundColor: entry.color,
-                  boxShadow: `0 0 6px ${entry.color}`
-                }}
-              />
-              <span style={{ color: entry.color }} className="text-xs font-medium">
-                {entry.name}
-              </span>
-              <span className="text-gray-400 text-xs ml-auto">
-                {entry.value}º
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-  return null;
+// Halo Effect para activeDot (apenas no hover) - Enhanced "Liquid Glass" com Badge
+const HaloDot = (props: any) => {
+  const { cx, cy, fill, stroke, dataKey, payload, focusedUser } = props;
+  if (!cx || !cy) return null;
+
+  const color = stroke || fill || '#888888';
+  const initials = getInitials(dataKey);
+  const position = payload?.[dataKey]; // Extrai a posição do payload
+  
+  // Calcular opacidade baseada no foco
+  const isFocused = focusedUser === null || focusedUser === dataKey;
+  const dotOpacity = focusedUser === null ? 1 : (isFocused ? 1 : 0.15);
+
+  const hexToRgb = (hex: string): string => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '255, 255, 255';
+  };
+
+  const rgbColor = hexToRgb(color);
+
+  return (
+    <g opacity={dotOpacity} style={{ transition: 'opacity 0.3s ease' }}>
+      {/* Halo externo - aura suave */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={28}
+        fill={`rgba(${rgbColor}, 0.15)`}
+        style={{ backdropFilter: 'blur(12px)' }}
+      />
+      {/* Halo médio */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={24}
+        fill="none"
+        stroke={`rgba(${rgbColor}, 0.3)`}
+        strokeWidth={1.5}
+        opacity={0.8}
+      />
+      {/* Círculo principal com vidro mais opaco */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={18}
+        fill={`rgba(${rgbColor}, 0.45)`}
+        style={{
+          backdropFilter: 'blur(10px)',
+          filter: 'drop-shadow(0 6px 12px rgba(0, 0, 0, 0.25))'
+        }}
+      />
+      {/* Borda mais visível no hover */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={18}
+        fill="none"
+        stroke="rgba(255, 255, 255, 0.35)"
+        strokeWidth={2}
+      />
+      {/* Realce interno intensificado */}
+      <circle
+        cx={cx}
+        cy={cy - 6}
+        r={6}
+        fill="rgba(255, 255, 255, 0.2)"
+        opacity={0.8}
+      />
+      {/* Número da posição - topo da esfera, bem pequeno (versão hover, mais visível) */}
+      {position && (
+        <text
+          x={cx}
+          y={cy - 9}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="white"
+          fontSize="9"
+          fontWeight="900"
+          fontFamily="system-ui, -apple-system, sans-serif"
+          opacity="0.95"
+          style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.4)' }}
+        >
+          {position}
+        </text>
+      )}
+      
+      {/* Inicial do usuário - centro da esfera (versão hover, mais visível) */}
+      <text
+        x={cx}
+        y={cy + 1}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill="white"
+        fontSize="14"
+        fontWeight="bold"
+        fontFamily="system-ui, -apple-system, sans-serif"
+        style={{ textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}
+      >
+        {initials}
+      </text>
+    </g>
+  );
 };
 
-// Defs com filtros suaves e modernos
+// Defs - sem filtros de glow para visual limpo e suave
 const GlowDefs = () => (
-  <defs>
-    {/* Glow suave e difuso para as linhas */}
-    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="coloredBlur" />
-      <feMerge>
-        <feMergeNode in="coloredBlur" />
-        <feMergeNode in="coloredBlur" />
-        <feMergeNode in="SourceGraphic" />
-      </feMerge>
-    </filter>
-  </defs>
+  <defs />
 );
 
 export function RankingEvolutionChart({ data }: RankingEvolutionChartProps) {
   const { data: realData, isLoading, userColors } = useRankingHistory();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [focusedUser, setFocusedUser] = useState<string | null>(null);
   
   // Usar dados reais se disponíveis, caso contrário usar mock
   const chartData = data || realData || MOCK_DATA;
 
-  // Calcular largura dinâmica do gráfico
+  // Handle focus toggle
+  const handleFocus = (userId: string) => {
+    setFocusedUser((prev) => (prev === userId ? null : userId));
+  };
+
+  // OBJETIVO 3: Calcular largura dinâmica baseada no número de rodadas
+  // Mínimo 120px por rodada para garantir espaçamento horizontal adequado (maior respiro)
   const chartWidth = useMemo(() => {
-    return Math.max(typeof window !== 'undefined' ? window.innerWidth : 800, chartData.length * 80);
+    const minWidthPerRodada = 120;
+    const calculatedWidth = Math.max(chartData.length * minWidthPerRodada, 800);
+    return typeof window !== 'undefined' ? Math.max(window.innerWidth - 40, calculatedWidth) : calculatedWidth;
   }, [chartData.length]);
 
   // Extrair nomes dos usuários (todas as colunas exceto 'rodada' e 'numero')
@@ -250,17 +352,16 @@ export function RankingEvolutionChart({ data }: RankingEvolutionChartProps) {
           <Maximize2 className="h-4 w-4" />
         </Button>
       </CardHeader>
-      <CardContent>
+      <CardContent className="overflow-y-auto max-h-[calc(100vh-200px)]">
         <div className="w-full overflow-x-auto overflow-y-hidden pb-4" ref={scrollContainerRef}>
           <div style={{ width: chartWidth }} className="min-w-full">
-            <div className="h-96">
+            <div className="h-[600px] bg-gradient-to-br from-gray-900 to-black/80">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={chartData}
-                  margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
+                  margin={{ top: 40, right: 30, left: 20, bottom: 10 }}
                 >
-                  {/* SVG Defs para efeitos */}
-                  <GlowDefs />
+                  {/* SVG Defs - sem filtros */}
 
                   {/* Grid ultra-minimalista - quase invisível */}
                   <CartesianGrid
@@ -299,12 +400,6 @@ export function RankingEvolutionChart({ data }: RankingEvolutionChartProps) {
                     tickLine={{ stroke: "#444444", strokeOpacity: 0.3 }}
                   />
 
-                  {/* Tooltip customizado */}
-                  <Tooltip
-                    content={<CustomTooltip />}
-                    cursor={{ stroke: "rgba(59, 130, 246, 0.2)", strokeWidth: 2 }}
-                  />
-
                   {/* Legenda */}
                   <Legend
                     wrapperStyle={{ paddingTop: "20px" }}
@@ -312,23 +407,27 @@ export function RankingEvolutionChart({ data }: RankingEvolutionChartProps) {
                     textAnchor="middle"
                   />
 
-                  {/* Linhas para cada usuário - com neon rings */}
+                  {/* Linhas para cada usuário - com interatividade de foco */}
                   {usuarios.map((usuario) => {
                     const color = getColorForUser(usuario, usuarios, userColors);
+                    const isFocused = focusedUser === null || focusedUser === usuario;
+                    const lineStrokeOpacity = focusedUser === null ? 0.65 : (isFocused ? 1 : 0.1);
+                    const lineStrokeWidth = focusedUser === null ? 3.5 : (isFocused ? 5 : 2.5);
+                    
                     return (
                       <Line
                         key={usuario}
                         type="monotone"
                         dataKey={usuario}
                         stroke={color}
-                        strokeWidth={2.5}
-                        dot={<RingDot stroke={color} fill={color} />}
-                        activeDot={<HaloDot fill={color} stroke={color} />}
+                        strokeWidth={lineStrokeWidth}
+                        strokeOpacity={lineStrokeOpacity}
+                        dot={<CustomChartDot stroke={color} fill={color} focusedUser={focusedUser} />}
+                        activeDot={<HaloDot fill={color} stroke={color} focusedUser={focusedUser} />}
                         isAnimationActive={true}
                         name={usuario}
-                        style={{
-                          filter: `drop-shadow(0px 0px 6px ${color}a0)`,
-                        }}
+                        onClick={() => handleFocus(usuario)}
+                        style={{ cursor: 'pointer', transition: 'stroke-width 0.3s ease, stroke-opacity 0.3s ease' }}
                       />
                     );
                   })}
@@ -338,60 +437,71 @@ export function RankingEvolutionChart({ data }: RankingEvolutionChartProps) {
           </div>
         </div>
 
-        {/* Legenda de cores */}
-        <div className="mt-6 grid gap-3">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+        {/* Legenda de cores - Com espaçamento generoso e interatividade */}
+        <div className="mt-8 pb-12">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">
             Legenda de Usuários
           </p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+          <div className="flex flex-wrap gap-3">
             {usuarios.map((usuario) => {
               const color = getColorForUser(usuario, usuarios, userColors);
+              const isFocused = focusedUser === usuario;
               return (
-                <div key={usuario} className="flex items-center gap-2 rounded-lg bg-muted/40 p-2">
+                <div
+                  key={usuario}
+                  onClick={() => handleFocus(usuario)}
+                  className={`flex items-center gap-2 rounded-lg p-2 whitespace-nowrap cursor-pointer transition-all duration-300 ${
+                    isFocused
+                      ? 'bg-white/20 ring-2 ring-offset-2 ring-white/40'
+                      : 'bg-muted/40 hover:bg-muted/60'
+                  }`}
+                >
                   <div
-                    className="h-3 w-3 rounded-full"
+                    className="h-3 w-3 rounded-full flex-shrink-0"
                     style={{ backgroundColor: color }}
                   />
-                  <span className="text-sm font-medium text-foreground">{usuario}</span>
+                  <span className={`text-sm font-medium ${isFocused ? 'font-bold' : ''}`}>{usuario}</span>
                 </div>
               );
             })}
           </div>
+          <div className="h-6" />
         </div>
       </CardContent>
     </Card>
 
-    {/* Modal Fullscreen */}
+    {/* Modal Fullscreen - Otimizado para Mobile Landscape */}
     {isFullscreen && (
-      <div className="fixed inset-0 z-50 flex flex-col bg-background">
-        {/* Header do Modal */}
-        <div className="flex items-center justify-between border-b border-primary/10 bg-background/50 px-4 py-3 backdrop-blur-sm">
-          <div>
-            <h2 className="text-lg font-bold">📈 Evolução do Ranking - Tela Cheia</h2>
-            <p className="text-xs text-muted-foreground">Arraste para o lado ou gire a tela para visualizar melhor</p>
+      <div className="fixed inset-0 z-[9999] flex flex-col bg-gray-950 overflow-y-auto" style={{ height: '100dvh', width: '100dvw' }}>
+        {/* Header do Modal - Compacto em landscape, protegido da safe area */}
+        <div className="flex items-center justify-between border-b border-primary/10 bg-gray-900/80 px-3 sm:px-6 py-2 sm:py-3 backdrop-blur-sm flex-none sticky top-0 z-10" style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}>
+          <div className="min-w-0">
+            <h2 className="text-sm sm:text-base font-bold truncate">📈 Evolução do Ranking</h2>
+            <p className="text-xs text-muted-foreground hidden sm:block">Arraste para o lado para visualizar melhor</p>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsFullscreen(false)}
-            className="ml-4"
+            className="ml-2 flex-shrink-0"
             title="Fechar"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
         </div>
 
-        {/* Conteúdo do Modal - Gráfico em altura maior */}
-        <div className="flex-1 overflow-hidden p-4">
-          <div className="w-full overflow-x-auto overflow-y-hidden pb-4 h-full" ref={scrollContainerRef}>
-            <div style={{ width: chartWidth }} className="min-w-full">
-              <div className="h-[70vh]">
+        {/* Conteúdo do Modal - Gráfico responsivo com scroll (REI da tela) */}
+        <div className="w-full px-1 sm:px-3 py-1 sm:py-2 bg-gradient-to-br from-gray-900 to-black/80">
+          {/* Scroll Container - permite scroll horizontal do gráfico com altura garantida */}
+          <div className="overflow-x-auto overflow-y-hidden w-full min-h-[600px]" ref={scrollContainerRef}>
+            <div style={{ width: chartWidth, height: '600px', display: 'flex', flexDirection: 'column' }} className="flex flex-col">
+              <div style={{ flex: 1, width: '100%' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
                     data={chartData}
-                    margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
+                    margin={{ top: 40, right: 15, left: 35, bottom: 8 }}
                   >
-                    <GlowDefs />
+                    {/* Sem filtros de glow */}
 
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -403,63 +513,91 @@ export function RankingEvolutionChart({ data }: RankingEvolutionChartProps) {
                     <XAxis
                       dataKey="rodada"
                       stroke="#555555"
-                      style={{ fontSize: "0.75rem", fontWeight: 400, fill: "#888888" }}
+                      style={{ fontSize: "0.7rem", fontWeight: 400, fill: "#888888" }}
                       tickLine={{ stroke: "#444444", strokeOpacity: 0.3 }}
                     />
 
                     <YAxis
                       reversed={true}
                       stroke="#555555"
-                      style={{ fontSize: "0.75rem", fontWeight: 400, fill: "#888888" }}
+                      style={{ fontSize: "0.7rem", fontWeight: 400, fill: "#888888" }}
                       ticks={Array.from({ length: Math.max(...chartData.flatMap((row) =>
                         usuarios.map((user) => (typeof row[user] === "number" ? row[user] : 0))
                       )) }, (_, i) => i + 1)}
                       domain={[Math.max(...chartData.flatMap((row) =>
                         usuarios.map((user) => (typeof row[user] === "number" ? row[user] : 0))
                       )), 1]}
+                      width={32}
                       label={{
-                        value: "Posição",
+                        value: "Pos.",
                         angle: -90,
                         position: "insideLeft",
                         offset: 10,
-                        style: { fill: "#888888", fontSize: "0.75rem", fontWeight: 400 },
+                        style: { fill: "#888888", fontSize: "0.65rem", fontWeight: 400 },
                       }}
                       tickLine={{ stroke: "#444444", strokeOpacity: 0.3 }}
                     />
 
-                    <Tooltip
-                      content={<CustomTooltip />}
-                      cursor={{ stroke: "rgba(59, 130, 246, 0.2)", strokeWidth: 2 }}
-                    />
-
                     <Legend
-                      wrapperStyle={{ paddingTop: "20px" }}
+                      wrapperStyle={{ display: "none" }}
                       iconType="line"
                       textAnchor="middle"
                     />
 
                     {usuarios.map((usuario) => {
                       const color = getColorForUser(usuario, usuarios, userColors);
+                      const isFocused = focusedUser === null || focusedUser === usuario;
+                      const lineStrokeOpacity = focusedUser === null ? 0.65 : (isFocused ? 1 : 0.1);
+                      const lineStrokeWidth = focusedUser === null ? 3.5 : (isFocused ? 5 : 2.5);
+                      
                       return (
                         <Line
                           key={usuario}
                           type="monotone"
                           dataKey={usuario}
                           stroke={color}
-                          strokeWidth={2.5}
-                          dot={<RingDot stroke={color} fill={color} />}
-                          activeDot={<HaloDot fill={color} stroke={color} />}
+                          strokeWidth={lineStrokeWidth}
+                          strokeOpacity={lineStrokeOpacity}
+                          dot={<CustomChartDot stroke={color} fill={color} focusedUser={focusedUser} />}
+                          activeDot={<HaloDot fill={color} stroke={color} focusedUser={focusedUser} />}
                           isAnimationActive={true}
                           name={usuario}
-                          style={{
-                            filter: `drop-shadow(0px 0px 6px ${color}a0)`,
-                          }}
+                          onClick={() => handleFocus(usuario)}
+                          style={{ cursor: 'pointer', transition: 'stroke-width 0.3s ease, stroke-opacity 0.3s ease' }}
                         />
                       );
                     })}
                   </LineChart>
                 </ResponsiveContainer>
               </div>
+            </div>
+          </div>
+
+          {/* Legenda compacta no footer - com interatividade */}
+          <div className="border-t border-primary/10 bg-gray-900/50 backdrop-blur-sm mt-2 pt-2 px-2 sm:px-3 pb-20" style={{ paddingBottom: 'max(5rem, calc(0.5rem + env(safe-area-inset-bottom)))' }}>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Jogadores</p>
+            <div className="flex flex-wrap gap-2">
+              {usuarios.map((usuario) => {
+                const color = getColorForUser(usuario, usuarios, userColors);
+                const isFocused = focusedUser === usuario;
+                return (
+                  <div
+                    key={usuario}
+                    onClick={() => handleFocus(usuario)}
+                    className={`flex items-center gap-1.5 rounded px-2 py-1 flex-shrink-0 cursor-pointer transition-all duration-300 ${
+                      isFocused
+                        ? 'bg-white/20 ring-1 ring-white/40'
+                        : 'bg-muted/30 hover:bg-muted/50'
+                    }`}
+                  >
+                    <div
+                      className="h-2 w-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: color }}
+                    />
+                    <span className="text-xs font-medium text-foreground whitespace-nowrap">{usuario}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

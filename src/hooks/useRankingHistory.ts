@@ -17,18 +17,12 @@ interface UseRankingHistoryResult {
   userColors: Record<string, string>; // userId -> cor
 }
 
-// Paleta de cores consistente (mesmo usada no gráfico)
-const COLOR_PALETTE = [
-  "#10B981", // Verde Neon
-  "#3B82F6", // Azul
-  "#F59E0B", // Laranja
-  "#EC4899", // Rosa
-  "#8B5CF6", // Roxo
-  "#06B6D4", // Cyan
-  "#EF4444", // Vermelho
-  "#14B8A6", // Teal
-  "#D97706", // Âmbar
-  "#7C3AED", // Violeta
+// Paleta de cores pastel/suave - visual limpo e agradável
+const DISTINCT_COLORS = [
+  '#FFB347', '#A0E7E5', '#B39CD0', '#F49AC2', '#CB99C9',
+  '#C23B22', '#FDFD96', '#836953', '#779ECB', '#FF6961',
+  '#B19CD9', '#FFD1DC', '#AEC6CF', '#F4C2C2', '#CFCFC4',
+  '#B38B6D'
 ];
 
 // Gerar cor consistente baseada no userId
@@ -40,8 +34,8 @@ const generateColorForUser = (userId: string): string => {
     hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32bit integer
   }
-  const index = Math.abs(hash) % COLOR_PALETTE.length;
-  return COLOR_PALETTE[index];
+  const index = Math.abs(hash) % DISTINCT_COLORS.length;
+  return DISTINCT_COLORS[index];
 };
 
 export const useRankingHistory = (): UseRankingHistoryResult => {
